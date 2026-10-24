@@ -5,25 +5,25 @@ import (
 	"monkey/internal/token"
 )
 
-// Node je zakladni rozhrani pro kazdy uzel v AST
+// Node je základní rozhraní pro každý uzel v AST
 type Node interface {
 	TokenLiteral() string
 	String() string
 }
 
-// Statement reprezentuje prikaz (nevraci hodnotu, napr. "let x = 5;")
+// Statement reprezentuje příkaz (nevrací hodnotu, např. "let x = 5;")
 type Statement interface {
 	Node
 	statementNode()
 }
 
-// Expression reprezentujje vyraz (vraci hodnotu, napr. "5 + 5", "x")
+// Expression reprezentuje výraz (vrací hodnotu, např. "5 + 5", "x")
 type Expression interface {
 	Node
 	expressionNode()
 }
 
-// Program je korenovy uzel kazdeho programu v nasem jazyce
+// Program je kořenový uzel každého programu v našem jazyce
 type Program struct {
 	Statements []Statement
 }
@@ -43,7 +43,7 @@ func (p *Program) String() string {
 	return out.String()
 }
 
-// LetStatement reprezentuje prikaz deklerace promenne: let x = 5;
+// LetStatement reprezentuje příkaz deklarace proměnné: let x = 5;
 type LetStatement struct {
 	Token token.Token // token.LET
 	Name  *Identifier
@@ -67,7 +67,7 @@ func (ls *LetStatement) String() string {
 	return out.String()
 }
 
-// Identifier reprezentuje identifikator (nazev promenne)
+// Identifier reprezentuje identifikátor (název proměnné)
 type Identifier struct {
 	Token token.Token // token.IDENT
 	Value string
@@ -77,7 +77,7 @@ func (i *Identifier) expressionNode()      {}
 func (i *Identifier) TokenLiteral() string { return i.Token.Literal }
 func (i *Identifier) String() string       { return i.Value }
 
-// ReturnStatement reprezentuje prikaz return: return 5;
+// ReturnStatement reprezentuje příkaz return: return 5;
 type ReturnStatement struct {
 	Token       token.Token // token.RETURN
 	ReturnValue Expression
@@ -88,7 +88,7 @@ func (rs *ReturnStatement) TokenLiteral() string { return rs.Token.Literal }
 func (rs *ReturnStatement) String() string {
 	var out bytes.Buffer
 
-	out.WriteString(lsTokenLiteralSafe(rs) + " ")
+	out.WriteString(rs.TokenLiteral() + " ")
 	if rs.ReturnValue != nil {
 		out.WriteString(rs.ReturnValue.String())
 	}
@@ -97,13 +97,9 @@ func (rs *ReturnStatement) String() string {
 	return out.String()
 }
 
-func lsTokenLiteralSafe(rs *ReturnStatement) string {
-	return rs.Token.Literal
-}
-
-// ExpressionStatement slouzi k obaleni vyrazy, aby mohl stat jako samostatny prikaz
+// ExpressionStatement slouží k obalení výrazu, aby mohl stát jako samostatný příkaz
 type ExpressionStatement struct {
-	Token      token.Token // prvni token vyrazu
+	Token      token.Token // první token výrazu
 	Expression Expression
 }
 
@@ -116,19 +112,19 @@ func (es *ExpressionStatement) String() string {
 	return ""
 }
 
-// IntegerLiteral reprezentuje ciselny literal, napr. "6"
+// IntegerLiteral reprezentuje číselný literál, např. "5"
 type IntegerLiteral struct {
 	Token token.Token
 	Value int64
 }
 
-func (il *IntegerLiteral) expressionNode()      {} // I accidentally wrote explosion instead of expression
+func (il *IntegerLiteral) expressionNode()      {}
 func (il *IntegerLiteral) TokenLiteral() string { return il.Token.Literal }
-func (il *IntegerLiteral) String() string
+func (il *IntegerLiteral) String() string       { return il.Token.Literal }
 
-// PrefixExpression reprezentuje unarni operaci, napr. "!5" nebo "-15"
+// PrefixExpression reprezentuje unární operaci, např. "!5" nebo "-15"
 type PrefixExpression struct {
-	Token    token.Token // Prefix token, napr, '!' nebo '-'
+	Token    token.Token // Prefix token, např. '!' nebo '-'
 	Operator string
 	Right    Expression
 }
@@ -144,22 +140,137 @@ func (pe *PrefixExpression) String() string {
 	return out.String()
 }
 
-// InfixExpression reprezentuje binarni operaci, napr. "22 + 13"
+// InfixExpression reprezentuje binární operaci, např. "5 + 5"
 type InfixExpression struct {
-	Token    token.Token // Operatorovy token, napr. '+'
+	Token    token.Token // Operátorový token, např. '+'
 	Left     Expression
 	Operator string
 	Right    Expression
 }
 
 func (ie *InfixExpression) expressionNode()      {}
-func (ie *InfixExpression) TokenLiteral() string { return ie.Token.Literal } // I wrote literature atleast it looks like i still go to school even if there are typos but im from czechia so
+func (ie *InfixExpression) TokenLiteral() string { return ie.Token.Literal }
 func (ie *InfixExpression) String() string {
 	var out bytes.Buffer
 	out.WriteString("(")
 	out.WriteString(ie.Left.String())
-	out.WriteString(" " + ie.Operator + " ") // It seems like i want to be a doctor because operation instead of operator but sike i want to be a pilot or atleast thats my dream but remeber like our teacher said go big or go home, or aim for the stars
+	out.WriteString(" " + ie.Operator + " ")
 	out.WriteString(ie.Right.String())
 	out.WriteString(")")
+	return out.String()
+}
+
+// Boolean reprezentuje booleovský literál (true / false)
+type Boolean struct {
+	Token token.Token
+	Value bool
+}
+
+func (b *Boolean) expressionNode()      {}
+func (b *Boolean) TokenLiteral() string { return b.Token.Literal }
+func (b *Boolean) String() string       { return b.Token.Literal }
+
+// IfExpression reprezentuje podmíněný výraz (if (...) { ... } else { ... })
+type IfExpression struct {
+	Token       token.Token // token.IF
+	Condition   Expression
+	Consequence *BlockStatement
+	Alternative *BlockStatement
+}
+
+func (ie *IfExpression) expressionNode()      {}
+func (ie *IfExpression) TokenLiteral() string { return ie.Token.Literal }
+func (ie *IfExpression) String() string {
+	var out bytes.Buffer
+
+	out.WriteString("if")
+	out.WriteString(ie.Condition.String())
+	out.WriteString(" ")
+	out.WriteString(ie.Consequence.String())
+
+	if ie.Alternative != nil {
+		out.WriteString("else ")
+		out.WriteString(ie.Alternative.String())
+	}
+
+	return out.String()
+}
+
+// BlockStatement reprezentuje blok příkazů v závorkách { ... }
+type BlockStatement struct {
+	Token      token.Token // token.LBRACE
+	Statements []Statement
+}
+
+func (bs *BlockStatement) statementNode()       {}
+func (bs *BlockStatement) TokenLiteral() string { return bs.Token.Literal }
+func (bs *BlockStatement) String() string {
+	var out bytes.Buffer
+
+	for _, s := range bs.Statements {
+		out.WriteString(s.String())
+	}
+
+	return out.String()
+}
+
+// FunctionLiteral reprezentuje definici funkce (fn(...) { ... })
+type FunctionLiteral struct {
+	Token      token.Token // token.FUNCTION
+	Parameters []*Identifier
+	Body       *BlockStatement
+}
+
+func (fl *FunctionLiteral) expressionNode()      {}
+func (fl *FunctionLiteral) TokenLiteral() string { return fl.Token.Literal }
+func (fl *FunctionLiteral) String() string {
+	var out bytes.Buffer
+
+	params := []string{}
+	for _, p := range fl.Parameters {
+		params = append(params, p.String())
+	}
+
+	out.WriteString(fl.TokenLiteral())
+	out.WriteString("(")
+	for i, p := range params {
+		out.WriteString(p)
+		if i < len(params)-1 {
+			out.WriteString(", ")
+		}
+	}
+	out.WriteString(") ")
+	out.WriteString(fl.Body.String())
+
+	return out.String()
+}
+
+// CallExpression reprezentuje volání funkce (např. add(2, 3))
+type CallExpression struct {
+	Token     token.Token // token.LPAREN
+	Function  Expression
+	Arguments []Expression
+}
+
+func (ce *CallExpression) expressionNode()      {}
+func (ce *CallExpression) TokenLiteral() string { return ce.Token.Literal }
+func (ce *CallExpression) String() string {
+	var out bytes.Buffer
+
+	args := []string{}
+	for _, a := range ce.Arguments {
+		args = append(args, a.String())
+	}
+
+	out.WriteString(ce.Function.String())
+	out.WriteString("(")
+	for i, a := range args {
+		out.WriteString(a)
+		if i < len(args)-1 {
+			out.WriteString(", ")
+		}
+	}
+	out.WriteString(")")
+
 	return out.String()
 }
